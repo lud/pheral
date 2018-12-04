@@ -1,0 +1,67 @@
+defmodule Pheral.Yaws.Sup do
+
+  @pheral_yaws to_charlist('pheral')
+
+  def child_spec(pheral_config) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [pheral_config]},
+      type: :supervisor,
+      restart: :permanent,
+      shutdown: :infinity
+    }
+  end
+
+  def start_link(pheral_config) do
+    %{"web" => web} = pheral_config
+    {:ok, server_conf, global_conf, child_specs} = transform_config(web, @pheral_yaws)
+
+    IO.puts("server_conf : #{inspect(server_conf, pretty: true)}")
+    IO.puts("global_conf : #{inspect(global_conf, pretty: true)}")
+    IO.puts("child_specs : #{inspect(child_specs, pretty: true)}")
+
+    children = child_specs
+    {:ok, pid} = Supervisor.start_link(children, strategy: :one_for_one)
+    :yaws_api.setconf(global_conf, server_conf)
+    {:ok, pid}
+  end
+
+  defp transform_config(web, server_id) when is_list(server_id) do
+    %{
+      "docroot" => docroot,
+      "port" => port,
+      "listen" => listen,
+      "logdir" => logdir,
+    } = web
+
+    docroot = to_charlist(docroot)
+    logdir = to_charlist(logdir)
+    port = to_integer(port)
+    listen = ip_to_tuple(listen)
+
+    server_conf = [docroot: docroot,
+                   port: port,
+                   listen: listen,
+                   appmods: []]
+
+
+    global_conf = [logdir: logdir,
+                   id: server_id]
+
+    :yaws_api.embedded_start_conf(docroot, server_conf, global_conf, server_id)
+  end
+
+  defp ip_to_tuple({_,_,_,_} = ip),
+    do: ip
+  defp ip_to_tuple(ip) when is_binary(ip) do
+    ip
+    |> String.split(".")
+    |> Enum.map(&String.to_integer/1)
+    |> List.to_tuple()
+  end
+
+  defp to_integer(bin) when is_binary(bin),
+    do: String.to_integer(bin)
+  defp to_integer(int) when is_integer(int),
+    do: int
+end
