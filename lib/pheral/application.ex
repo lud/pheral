@@ -10,9 +10,9 @@ defmodule Pheral.Application do
     config = Pheral.Config.load()
     IO.puts("Pheral config : #{inspect(config, pretty: true)}")
     children = [
-      {Pheral.Yaws.Sup, config},
+      # {Pheral.Yaws.Sup, config},
       # Starts a worker by calling: Pheral.Worker.start_link(arg)
-      # {Pheral.Worker, arg},
+      {Pheral.Cowboy.Plug, config},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
