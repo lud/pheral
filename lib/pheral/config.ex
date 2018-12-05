@@ -3,16 +3,28 @@ defmodule Pheral.Config do
   @config_fname "pheral.json"
 
   def load() do
-    File.cwd!
-    |> Path.join(@config_fname)
-    |> load()
+
+    find_config_file()
+    |> load_file()
   end
 
-  def load(path) do
+  defp find_config_file() do
+    in_release = Path.join(System.get_env("OLDPWD"), @config_fname)
+    in_mix = Path.join(File.cwd!(), @config_fname)
+    cond do
+      File.exists?(in_release) -> in_release
+      File.exists?(in_mix) -> in_mix
+      true -> nil
+    end
+  end
+
+  def load_file(nil) do
+    Logger.warn("Config file not found")
+    load_config(%{})
+  end
+
+  def load_file(path) do
     try do
-      if not File.regular?(path) do
-        throw :nofile
-      end
       path
         |> File.read!()
         |> Jason.decode!()
@@ -22,10 +34,6 @@ defmodule Pheral.Config do
         errmsg = "Error while parsin json in #{path} : #{errmsg}"
         Logger.error(errmsg)
         raise errmsg
-    catch
-      :nofile ->
-        Logger.warn("Config file #{path} not found")
-        load_config(%{})
     end
   end
 

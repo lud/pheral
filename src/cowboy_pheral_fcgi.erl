@@ -33,26 +33,26 @@
 -spec init(http_req(), [option()]) ->
             {ok, http_req(), #state{}}.
 init(Req, Opts) ->
-  io:format("Opts ~p~n ", [Opts]),
   {name, Name} = lists:keyfind(name, 1, Opts),
   {script_name, ScriptName} = lists:keyfind(script_name, 1, Opts),
   {script_dir, ScriptDir} = lists:keyfind(script_dir, 1, Opts),
   Timeout = case lists:keyfind(timeout, 1, Opts) of
     {timeout, To} -> To;
-    false -> 15000 end,
+    false -> 60000 end,
   PathRoot = case lists:keyfind(path_root, 1, Opts) of
     {path_root, Pr} -> Pr;
     false -> ScriptDir end,
   Https = cowboy_req:scheme(Req) =:= <<"https">>,
-  State = case whereis(Name) of
-    Server when is_pid(Server) ->
-      #state{server = Server,
+  FcgiPid = case Name of
+    Atom when is_atom(Atom) -> whereis(Atom);
+    Pid when is_pid(Pid) -> Pid
+  end,
+  State = #state{server = FcgiPid,
              timeout = Timeout,
              script_dir = ScriptDir,
              path_root = PathRoot,
              script_name = ScriptName,
-             https = Https}
-  end,
+             https = Https},
   handle_script(Req, State).
 
 -spec handle_script(http_req(), #state{}) -> {ok, http_req(), #state{}}.
@@ -100,7 +100,7 @@ handle_req(Req,
                 {<<"SERVER_SOFTWARE">>, <<"Cowboy">>} |
                 CGIParams1],
   CGIParams3 = params(Headers, CGIParams2),
-  io:format("CGIParams3 ~p~n ", [CGIParams3]),
+  % io:format("CGIParams3 ~p~n", [CGIParams3]),
   case ex_fcgi:begin_request(Server, responder, CGIParams3, Timeout) of
     error ->
       Req2 = cowboy_req:reply(502, Req),
@@ -385,7 +385,19 @@ send_document(Req, #cgi_head{type = undefined}, _Body) ->
   cowboy_req:reply(502, Req);
 send_document(Req, #cgi_head{status = Status, type = Type, headers = Headers},
               Body) ->
-  reply(Req, Body, Status, Type, Headers).
+  % PHP adds a Content-Lenght header (CamelCase) When I test with curl or nodejs
+  % as a http client, cowboy adds a duplicate content-length header (lowercase)
+  % with valuf of = 0, which is incorrect. With HTTPoison/hackney, the duplicate
+  % header is correct.
+  % So we discard the one with camel case and set the one with lowercase.
+  Headers2 = case maps:get(<<"Content-Length">>, Headers, undefined) of
+    undefined -> Headers;
+    ContentLenght ->
+      Headers1 = maps:remove(<<"Content-Length">>, Headers),
+      maps:put(<<"content-length">>, ContentLenght, Headers1)
+  end,
+  io:format("Send document headers ~p~n", [Headers2]),
+  reply(Req, Body, Status, Type, Headers2).
 
 -spec send_redirect(http_req(), #cgi_head{}, [binary()]) -> http_req().
 send_redirect(Req, #cgi_head{status = Status = <<$3, _/binary>>,
@@ -404,6 +416,8 @@ send_redirect(Req, #cgi_head{type = Type,
 reply(Req, Body, Status, undefined, Headers) ->
   cowboy_req:reply(Status, Headers, Body, Req);
 reply(Req, Body, Status, Type, Headers) ->
+  io:format("pheral:reply Status ~p~n", [Status]),
+  io:format("pheral:reply Headers ~p~n", [Headers]),
   cowboy_req:reply(Status, maps:put(<<"Content-Type">>, Type, Headers), Body, Req).
 
 -ifdef(TEST).

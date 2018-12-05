@@ -15,7 +15,7 @@ defmodule Pheral.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:sasl, :logger],
+      extra_applications: [:logger],
       mod: {Pheral.Application, []}
     ]
   end
@@ -25,8 +25,9 @@ defmodule Pheral.MixProject do
     [
       # {:yaws, git: "#{System.get_env("HOME")}/src/yaws", runtime: false, compile: compile_yaws_cmd},
       # {:cowboy, "~> 2.6"},
-      {:exsync, github: "falood/exsync", branch: "master"},
-      {:httpoison, "~> 1.4"},
+      {:distillery, "~> 2.0"},
+      # {:exsync, github: "falood/exsync", branch: "master", only: :dev},
+      # {:httpoison, "~> 1.4", only: :dev},
       {:cowboy, "~> 2.5", [env: :prod, hex: "cowboy", repo: "hexpm", optional: false, override: true]},
       {:plug_cowboy, "~> 2.0"},
       {:cowboy_fcgi, git: "https://github.com/unix1/cowboy_fcgi/", manager: :rebar3},
