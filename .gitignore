@@ -23,3 +23,5 @@ erl_crash.dump
 pheral-*.tar
 
 /logs/
+
+pheral.json
