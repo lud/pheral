@@ -12,6 +12,7 @@ defmodule Pheral.Application do
     children = [
       # {Pheral.Yaws.Sup, config},
       # Starts a worker by calling: Pheral.Worker.start_link(arg)
+      Pheral.Cowboy.FastCGI.fcgi_client_child_spec(config),
       {Pheral.Cowboy.Plug, config},
     ]
 

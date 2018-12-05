@@ -34,16 +34,21 @@ defmodule Pheral.Cowboy.Plug do
     IO.puts "custom_plug_static static_opts : #{inspect static_opts, pretty: true}"
     static_plug_state = Plug.Static.init(static_opts)
     IO.puts "static_plug_state : #{inspect static_plug_state, pretty: true}"
-    %{static: static_plug_state}
+    %{static: static_plug_state, config: pheral_config}
   end
 
-  def custom_plug_static(conn, %{static: static_plug_state}) do
-    case which_service(conn, static_plug_state) do
-      :php ->
-        IO.puts "serve with php"
+  def custom_plug_static(conn, %{static: static_plug_state, config: config}) do
+    which_service(conn, static_plug_state)
+    |> IO.inspect
+    |> case do
       :static ->
-        IO.puts "serve with static"
+        {Plug.Cowboy.Conn, req} = conn.adapter
+        IO.puts "serve with static, req: #{inspect req, pretty: true}"
         Plug.Static.call(conn, static_plug_state)
+      {:php, path} ->
+        {:ok, conn} = Pheral.Cowboy.FastCGI.handle_fcgi(conn, path, config)
+        # Plug.Conn.halt(conn)
+        Plug.Conn.halt(conn)
     end
   end
 
@@ -57,12 +62,15 @@ defmodule Pheral.Cowboy.Plug do
     path = SH.path(from, segments)
     IO.puts "is php path : #{inspect(path, pretty: true)} "
     cond do
-      not File.exists?(path) ->
-        :php
+      # A PHP file
       File.regular?(path) && ".php" === Path.extname(path) ->
-        :php
-      true ->
+        {:php, path}
+      # Anoher file
+      File.regular?(path) ->
         :static
+      # Default
+      true ->
+        {:php, :catchall}
     end
   end
 

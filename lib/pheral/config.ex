@@ -48,16 +48,20 @@ defmodule Pheral.Config do
   end
 
   defp apply_web_defaults(web) when is_map(web) do
-    web
+    web = web
     |> Map.put_new("docroot", "public")
+    web
+    |> Map.put_new("catchall", Path.join(web["docroot"], "index.php"))
     |> Map.put_new("logdir", "logs")
     |> Map.put_new("port", 8000)
+    |> Map.put_new("fpmport", 9999)
     |> Map.put_new("listen", "127.0.0.1")
   end
 
   defp apply_web_transforms(web) when is_map(web) do
     web
     |> Map.update!("docroot", &Path.expand/1)
+    |> Map.update!("catchall", &Path.expand/1)
     |> Map.update!("logdir", &Path.expand/1)
   end
 
