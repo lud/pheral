@@ -6,9 +6,12 @@ defmodule Pheral.Application do
   use Application
 
   def start(_type, _args) do
+
+    exsync_start()
+    HTTPoison.start
+
     # List all child processes to be supervised
     config = Pheral.Config.load()
-    IO.puts("Pheral config : #{inspect(config, pretty: true)}")
     children = [
       # {Pheral.Yaws.Sup, config},
       # Starts a worker by calling: Pheral.Worker.start_link(arg)
@@ -21,4 +24,12 @@ defmodule Pheral.Application do
     opts = [strategy: :one_for_one, name: Pheral.Supervisor]
     Supervisor.start_link(children, opts)
   end
+
+  defp exsync_start() do
+    case Code.ensure_loaded(ExSync) do
+      {:module, ExSync} -> ExSync.start()
+      {:error, :nofile} -> :ok
+    end
+  end
+
 end

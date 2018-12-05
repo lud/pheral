@@ -10,7 +10,7 @@ defmodule Pheral.Cowboy.Plug.StaticHelpers do
       URI.decode(path)
     rescue
       ArgumentError ->
-        raise InvalidPathError
+        raise Plug.Static.InvalidPathError
     end
   end
 

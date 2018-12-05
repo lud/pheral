@@ -7,12 +7,7 @@ defmodule Pheral.Cowboy.Plug do
   plug :custom_plug_static, builder_opts()
   plug :not_found
 
-  @pheral_yaws to_charlist('pheral')
-
   def child_spec(pheral_config) do
-
-    %{"web" => web} = pheral_config
-
     Plug.Cowboy.child_spec(
       scheme: :http,
       plug: {__MODULE__, pheral_config},
@@ -29,21 +24,15 @@ defmodule Pheral.Cowboy.Plug do
   end
 
   def init(pheral_config) do
-    IO.puts "init pheral_config : #{inspect pheral_config}"
     static_opts = static_plug_opts(pheral_config)
-    IO.puts "custom_plug_static static_opts : #{inspect static_opts, pretty: true}"
     static_plug_state = Plug.Static.init(static_opts)
-    IO.puts "static_plug_state : #{inspect static_plug_state, pretty: true}"
     %{static: static_plug_state, config: pheral_config}
   end
 
   def custom_plug_static(conn, %{static: static_plug_state, config: config}) do
     which_service(conn, static_plug_state)
-    |> IO.inspect
     |> case do
       :static ->
-        {Plug.Cowboy.Conn, req} = conn.adapter
-        IO.puts "serve with static, req: #{inspect req, pretty: true}"
         Plug.Static.call(conn, static_plug_state)
       {:php, path} ->
         {:ok, conn} = Pheral.Cowboy.FastCGI.handle_fcgi(conn, path, config)
@@ -53,14 +42,13 @@ defmodule Pheral.Cowboy.Plug do
   end
 
   def which_service(conn, static) do
-    %{at: at, only: only, prefix: prefix, from: from} = static
+    %{at: at, from: from} = static
     segments = SH.subset(at, conn.path_info)
     segments = Enum.map(segments, &SH.uri_decode/1)
     if SH.invalid_path?(segments) do
-      raise InvalidPathError
+      raise Plug.Static.InvalidPathError
     end
     path = SH.path(from, segments)
-    IO.puts "is php path : #{inspect(path, pretty: true)} "
     cond do
       # A PHP file
       File.regular?(path) && ".php" === Path.extname(path) ->

@@ -17,16 +17,15 @@ defmodule Pheral.Config do
         |> File.read!()
         |> Jason.decode!()
         |> load_config
-    catch
-      :nofile ->
-        Logger.warn("Config file #{path} not found")
-        load_config(%{})
     rescue e in Jason.DecodeError ->
-        IO.inspect(e)
         errmsg = Jason.DecodeError.message(e)
         errmsg = "Error while parsin json in #{path} : #{errmsg}"
         Logger.error(errmsg)
         raise errmsg
+    catch
+      :nofile ->
+        Logger.warn("Config file #{path} not found")
+        load_config(%{})
     end
   end
 

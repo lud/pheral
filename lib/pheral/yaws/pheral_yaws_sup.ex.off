@@ -16,10 +16,6 @@ defmodule Pheral.Yaws.Sup do
     %{"web" => web} = pheral_config
     {:ok, server_conf, global_conf, child_specs} = transform_config(web, @pheral_yaws)
 
-    IO.puts("server_conf : #{inspect(server_conf, pretty: true)}")
-    IO.puts("global_conf : #{inspect(global_conf, pretty: true)}")
-    IO.puts("child_specs : #{inspect(child_specs, pretty: true)}")
-
     children = child_specs
     {:ok, pid} = Supervisor.start_link(children, strategy: :one_for_one)
     :yaws_api.setconf(global_conf, server_conf)
