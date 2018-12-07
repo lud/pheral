@@ -2,16 +2,13 @@ defmodule Pheral.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
   @moduledoc false
-
+  require Logger
   use Application
 
   def start(_type, _args) do
 
-    # case Code.ensure_loaded(ExSync) do
-    #   {:module, ExSync} -> ExSync.start()
-    #   {:error, :nofile} -> :ok
-    # end
-    # HTTPoison.start
+    check_dev_env()
+
 
     # List all child processes to be supervised
     config = Pheral.Config.load()
@@ -26,6 +23,17 @@ defmodule Pheral.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Pheral.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  def check_dev_env do
+    if Code.ensure_compiled?(Mix) do
+      case Mix.env() do
+        :dev ->
+          Logger.debug "Starting ExSync"
+          ExSync.start()
+          # HTTPoison.start
+      end
+    end
   end
 
 end

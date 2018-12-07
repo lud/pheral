@@ -22,6 +22,7 @@
                 timeout :: uint32(),
                 script_dir :: iodata(),
                 path_root :: iodata(),
+                php_path_info :: iodata(),
                 script_name :: iodata(),
                 https :: boolean()}).
 
@@ -36,6 +37,7 @@ init(Req, Opts) ->
   {name, Name} = lists:keyfind(name, 1, Opts),
   {script_name, ScriptName} = lists:keyfind(script_name, 1, Opts),
   {script_dir, ScriptDir} = lists:keyfind(script_dir, 1, Opts),
+  {php_path_info, PhpPathInfo} = lists:keyfind(php_path_info, 1, Opts),
   Timeout = case lists:keyfind(timeout, 1, Opts) of
     {timeout, To} -> To;
     false -> 60000 end,
@@ -51,17 +53,19 @@ init(Req, Opts) ->
              timeout = Timeout,
              script_dir = ScriptDir,
              path_root = PathRoot,
+             php_path_info = PhpPathInfo,
              script_name = ScriptName,
              https = Https},
   handle_script(Req, State).
 
 -spec handle_script(http_req(), #state{}) -> {ok, http_req(), #state{}}.
 handle_script(Req, State) ->
-  #state{script_name = ScriptName, script_dir = ScriptDir} = State,
+  #state{script_name = ScriptName, script_dir = ScriptDir, php_path_info = PhpPathInfo} = State,
   CGIParams = [
     {<<"SCRIPT_NAME">>, ScriptName},
     {<<"SCRIPT_FILENAME">>, [ScriptDir, $/, ScriptName]},
-    {<<"PATH_TRANSLATED">>,<<>>}
+    {<<"PATH_TRANSLATED">>,<<>>},
+    {<<"PATH_INFO">>,PhpPathInfo}
   ],
   handle_req(Req, State, CGIParams).
 

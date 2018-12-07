@@ -26,7 +26,7 @@ defmodule Pheral.MixProject do
       # {:yaws, git: "#{System.get_env("HOME")}/src/yaws", runtime: false, compile: compile_yaws_cmd},
       # {:cowboy, "~> 2.6"},
       {:distillery, "~> 2.0"},
-      # {:exsync, github: "falood/exsync", branch: "master", only: :dev},
+      {:exsync, github: "falood/exsync", branch: "master", only: :dev, runtime: false},
       # {:httpoison, "~> 1.4", only: :dev},
       {:cowboy, "~> 2.5", [env: :prod, hex: "cowboy", repo: "hexpm", optional: false, override: true]},
       {:plug_cowboy, "~> 2.0"},

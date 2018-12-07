@@ -2,7 +2,7 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
-report = false
+report = true
 config :logger, handle_otp_reports: report
 config :logger, handle_sasl_reports: report
 

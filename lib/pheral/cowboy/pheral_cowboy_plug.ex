@@ -32,36 +32,55 @@ defmodule Pheral.Cowboy.Plug do
   def custom_plug_static(conn, %{static: static_plug_state, config: config}) do
     which_service(conn, static_plug_state)
     |> case do
-      :static ->
+      {:static, path} ->
         Plug.Static.call(conn, static_plug_state)
-      {:php, path} ->
-        {:ok, conn} = Pheral.Cowboy.FastCGI.handle_fcgi(conn, path, config)
-        # Plug.Conn.halt(conn)
+      {:php, path_data} ->
+        {:ok, conn} = Pheral.Cowboy.FastCGI.handle_fcgi(conn, path_data, config)
         Plug.Conn.halt(conn)
     end
   end
 
   def which_service(conn, static) do
     %{at: at, from: from} = static
+    IO.puts "conn #{inspect conn, pretty: true}"
     segments = SH.subset(at, conn.path_info)
     segments = Enum.map(segments, &SH.uri_decode/1)
     if SH.invalid_path?(segments) do
       raise Plug.Static.InvalidPathError
     end
-    path = SH.path(from, segments)
-    cond do
-      # A PHP file
-      File.regular?(path) && ".php" === Path.extname(path) ->
-        {:php, path}
-      # Anoher file
-      File.regular?(path) ->
-        :static
-      # Default
-      true ->
-        {:php, :catchall}
-    end
+    path = SH.path(from, [])
+    IO.puts "conn.path_info        #{inspect conn.path_info}"
+    IO.puts "at                    #{inspect at}"
+    IO.puts "segments              #{inspect segments}"
+    IO.puts "path                  #{inspect path}"
+    IO.puts "Path.extname(path)    #{inspect Path.extname(path)}"
+    IO.puts "File.regular?(path)   #{inspect File.regular?(path)}"
+    which_service_2(path, segments)
   end
 
+  # At each part of the segment, we check if a corresponding file exists, and
+  # if true, the remaining segments become PATH_INFO
+  def which_service_2(path, [seg|segments] = segments_debug) do
+    IO.puts "check path #{path} with #{inspect segments_debug}"
+    path = Path.join(path, seg)
+    if File.regular?(path) do
+      which_service_regular(path, segments)
+    else
+      which_service_2(path, segments)
+    end
+  end
+  def which_service_2(path, [] = segments_debug) do
+    IO.puts "check path #{path} with #{inspect segments_debug}"
+    {:php, :catchall}
+  end
+
+  def which_service_regular(path, php_path_info_segments) do
+    if ".php" === Path.extname(path) do
+      {:php, {path, php_path_info_segments}}
+    else
+      {:static, path}
+    end
+  end
 
   def not_found(conn, _) do
     send_resp(conn, 404, "not found")
